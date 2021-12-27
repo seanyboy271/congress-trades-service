@@ -1,7 +1,3 @@
-export interface SenateData{
-    entries:SenateEntry[]
-}
-
 export interface SenateEntry{
     transaction_date:string,
     owner:string,
@@ -14,10 +10,6 @@ export interface SenateEntry{
     senator:string,
     ptr_link:string,
     disclosure_date: string
-}
-
-export interface HouseData{
-    entries: HouseEntry[]
 }
 
 export interface HouseEntry{
