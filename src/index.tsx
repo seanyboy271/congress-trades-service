@@ -32,15 +32,21 @@ const downloadAndExtract = async (
   section: Section
 ): Promise<any> => {
   const today = new Date();
-  const dataDir = `${__dirname}/../data/${section}/${section}_${today.getFullYear()}-${today.getMonth()}-${today.getDay()}.json`;
+  const dataDir_today = `${__dirname}/../data/${section}/${section}_${today.getFullYear()}-${today.getMonth()}-${today.getDay()}.json`;
 
   //   Only download new data if the file that already exists is not from today
-  if (!fs.existsSync(dataDir)) {
+  if (!fs.existsSync(dataDir_today)) {
     const response = await Axios.get(url, { responseType: "arraybuffer" });
+    fs.writeFileSync(dataDir_today, response.data);
 
-    fs.writeFileSync(dataDir, response.data);
+    //Delete old file
+    today.setDate(today.getDate() - 1);
+    const dataDir_yest = `${__dirname}/../data/${section}/${section}_${today.getFullYear()}-${today.getMonth()}-${today.getDay()}.json`;
+    if (fs.existsSync(dataDir_yest)) {
+      fs.unlink(dataDir_yest, () => {});
+    }
   }
   return {
-    entries: JSON.parse(fs.readFileSync(dataDir, { encoding: "utf-8" })),
+    entries: JSON.parse(fs.readFileSync(dataDir_today, { encoding: "utf-8" })),
   };
 };
