@@ -4,6 +4,7 @@ import fs from "fs";
 import { Section } from "./models/sections";
 import { HouseEntry, SenateEntry } from "./models/data";
 import cors from "cors";
+import path from "path";
 const app = express();
 const port = 8080;
 
@@ -30,23 +31,29 @@ app.listen(port, () => {
 const downloadAndExtract = async (
   url: string,
   section: Section
-): Promise<any> => {
+): Promise<HouseEntry[] & SenateEntry[]> => {
   const today = new Date();
   const dataDir_today = `${__dirname}/../data/${section}/${section}_${today.getFullYear()}-${today.getMonth()}-${today.getDay()}.json`;
 
   //   Only download new data if the file that already exists is not from today
   if (!fs.existsSync(dataDir_today)) {
+    clearDirectory(`${__dirname}/../data/${section}`);
     const response = await Axios.get(url, { responseType: "arraybuffer" });
-    fs.writeFileSync(dataDir_today, response.data);
-
-    //Delete old file
-    today.setDate(today.getDate() - 1);
-    const dataDir_yest = `${__dirname}/../data/${section}/${section}_${today.getFullYear()}-${today.getMonth()}-${today.getDay()}.json`;
-    if (fs.existsSync(dataDir_yest)) {
-      fs.unlink(dataDir_yest, () => {});
-    }
+    fs.writeFile(dataDir_today, response.data, () => {});
+    return JSON.parse(response.data.toString());
+  } else {
+    return JSON.parse(fs.readFileSync(dataDir_today, { encoding: "utf-8" }));
   }
-  return {
-    entries: JSON.parse(fs.readFileSync(dataDir_today, { encoding: "utf-8" })),
-  };
+};
+
+const clearDirectory = (directory: string) => {
+  fs.readdir(directory, (err, files) => {
+    if (err) throw err;
+
+    for (const file of files) {
+      fs.unlink(path.join(directory, file), (err) => {
+        if (err) throw err;
+      });
+    }
+  });
 };
