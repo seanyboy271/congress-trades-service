@@ -2,9 +2,10 @@ import express from "express";
 import Axios from "axios";
 import fs from "fs";
 import { Section } from "./models/sections";
-import { HouseEntry, SenateEntry } from "./models/data";
+import { CongressData, HouseEntry, SenateEntry } from "./models/data";
 import cors from "cors";
 import path from "path";
+import { elementAt } from "rxjs";
 const app = express();
 const port = 8080;
 
@@ -13,14 +14,20 @@ app.use(cors({ origin: "http://localhost:3000" }));
 app.get("/get_house_data", async (req, res) => {
   const url =
     "https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json";
-  const result: HouseEntry[] = await downloadAndExtract(url, Section.HOUSE);
+  const result: HouseEntry[] = (await downloadAndExtract(
+    url,
+    Section.HOUSE
+  )) as HouseEntry[];
   res.send(result);
 });
 
 app.get("/get_senate_data", async (req, res) => {
   const url =
     "https://senate-stock-watcher-data.s3-us-west-2.amazonaws.com/aggregate/all_transactions.json";
-  const result: SenateEntry[] = await downloadAndExtract(url, Section.SENATE);
+  const result: SenateEntry[] = (await downloadAndExtract(
+    url,
+    Section.SENATE
+  )) as SenateEntry[];
   res.send(result);
 });
 
@@ -31,7 +38,7 @@ app.listen(port, () => {
 const downloadAndExtract = async (
   url: string,
   section: Section
-): Promise<HouseEntry[] & SenateEntry[]> => {
+): Promise<Array<CongressData>> => {
   const today = new Date();
   const dataDir_today = `${__dirname}/../data/${section}/${section}_${today.getFullYear()}-${today.getMonth()}-${today.getDay()}.json`;
 
@@ -40,9 +47,27 @@ const downloadAndExtract = async (
     clearDirectory(`${__dirname}/../data/${section}`);
     const response = await Axios.get(url, { responseType: "arraybuffer" });
     fs.writeFile(dataDir_today, response.data, () => {});
-    return JSON.parse(response.data.toString());
+    const res: CongressData[] = JSON.parse(
+      fs.readFileSync(dataDir_today, { encoding: "utf-8" })
+    );
+    return res.map((elem) => {
+      const split = elem.transaction_date.split("-");
+      return {
+        ...elem,
+        transaction_date: `${split[1]}/${split[2]}/${split[0]}`,
+      };
+    });
   } else {
-    return JSON.parse(fs.readFileSync(dataDir_today, { encoding: "utf-8" }));
+    const response: CongressData[] = JSON.parse(
+      fs.readFileSync(dataDir_today, { encoding: "utf-8" })
+    );
+    return response.map((elem) => {
+      const split = elem.transaction_date.split("-");
+      return {
+        ...elem,
+        transaction_date: `${split[1]}/${split[2]}/${split[0]}`,
+      };
+    });
   }
 };
 
